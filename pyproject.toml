@@ -9,12 +9,14 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "duckdb>=1.5.6",
     "faker>=40.37.0",
 ]
 
 [project.scripts]
 dataset-users = "work.dataset_users:main"
 dataset-orders = "work.dataset_orders:main"
+orders-report = "work.orders_report:main"
 
 [build-system]
 requires = ["uv_build>=0.12.10,<0.13.0"]
