@@ -7,6 +7,11 @@ models:
         data_tests:
           - unique
           - not_null
+      - name: username_normalized
+        description: Username without leading and trailing whitespace, in lowercase. Used for case-insensitive matching.
+        data_tests:
+          - not_null
+          - unique
       - name: email
         data_tests:
           - unique
@@ -16,10 +21,24 @@ models:
           - accepted_values:
               arguments:
                 values: ["F", "M"]
+      - name: birthdate
+        description: Birthdate of the user, NULL when it is later than the first order of the user.
+      - name: birthdate_is_valid
+        description: True when the original birthdate is not later than the first order of the user.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [true, false]
+                quote: false
       - name: state
         description: Two letters code of the state, territory or military region.
         data_tests:
           - not_null
+          - relationships:
+              arguments:
+                to: ref('state_zip_ranges')
+                field: state
 
   - name: stg_orders
     description: One row per order, typed and deduplicated.
@@ -36,6 +55,7 @@ models:
                 to: ref('stg_users')
                 field: user_id
       - name: quantity
+        description: Number of items ordered, strictly positive (see assert_orders_quantity_positive).
         data_tests:
           - accepted_values:
               arguments:
