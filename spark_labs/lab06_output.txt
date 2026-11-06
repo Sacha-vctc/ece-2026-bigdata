@@ -1,0 +1,121 @@
+
+======================================================================
+RDD creation and partitions
+======================================================================
+users_lines partitions : 2
+orders_lines partitions: 2
+defaultMinPartitions   : 2
+after repartition(8)   : 8
+after coalesce(1)      : 1
+
+======================================================================
+Lazy evaluation and lineage
+======================================================================
+(2) PythonRDD[11] at RDD at PythonRDD.scala:58 []
+ |  orders.csv MapPartitionsRDD[3] at textFile at NativeMethodAccessorImpl.java:0 []
+ |  orders.csv HadoopRDD[2] at textFile at NativeMethodAccessorImpl.java:0 []
+orders_data.count() #1: 2829
+orders_data.count() #2: 2829
+
+======================================================================
+The cost of no schema: the multiline address
+======================================================================
+'uuid,username,name,sex,address,mail,birthdate'
+'bdd640fb-0667-4ad1-9c80-317fa3b1799d,garzaanthony,Charles Garcia,M,"908 Jennifer Squares'
+'Robinsonshire, KY 01352",helenpeterson@gmail.com,1935-09-20'
+'17be3111-1a2a-43ed-962b-0f79c37459ee,blairamanda,Ryan Munoz,M,"Unit 6184 Box 9593'
+'DPO AP 09617",stanleykendra@gmail.com,2009-12-16'
+'47294739-614f-43d7-99db-3ad0ddd1dfb2,elizabethmiles,Jacob Wood,M,"283 Steven Groves'
+users_lines.count(): 101
+users_records.count(): 50
+
+======================================================================
+Manual parsing of orders
+======================================================================
+{'order_id': '2339ba19-2563-4cc3-8a97-ebf555d596af', 'user_id': 'bdd640fb-0667-4ad1-9c80-317fa3b1799d', 'date': '2020-01-01 00:02:17.891488+00:00', 'quantity': 4, 'product': 'drink'}
+{'order_id': 'b49e04cc-c243-49e7-a387-eaf6d4c3a832', 'user_id': 'bdd640fb-0667-4ad1-9c80-317fa3b1799d', 'date': '2020-01-01 01:28:08.796458+00:00', 'quantity': 5, 'product': 'bread'}
+{'order_id': '41843b03-04dd-4054-9448-23f7e7e646c7', 'user_id': 'bdd640fb-0667-4ad1-9c80-317fa3b1799d', 'date': '2020-01-01 02:12:56.357080+00:00', 'quantity': 2, 'product': 'donut'}
+Transformation defined: no error yet (lazy)
+collect() -> ValueError 'too many values to unpack': raised at the action, not at read time
+
+======================================================================
+Key-value RDDs: total quantity per user
+======================================================================
+reduceByKey: [('f143262f-dc5c-4eed-8da0-365bf89897b9', 12), ('969b6662-0562-4059-968c-c69b1064005c', 40), ('ce9e1a11-fcbb-4e59-bbdd-cf7c9c96e9ec', 253), ('5563f616-00e8-4ece-8b49-452d46d483f3', 57), ('f94d6204-6808-493f-9fed-2c43e256a6dc', 175)]
+groupByKey : [('f143262f-dc5c-4eed-8da0-365bf89897b9', 12), ('969b6662-0562-4059-968c-c69b1064005c', 40), ('ce9e1a11-fcbb-4e59-bbdd-cf7c9c96e9ec', 253), ('5563f616-00e8-4ece-8b49-452d46d483f3', 57), ('f94d6204-6808-493f-9fed-2c43e256a6dc', 175)]
+Same result: True
+
+======================================================================
+Manual deduplication
+======================================================================
+before / after dedup: 2829 2829
+
+======================================================================
+Joining orders with users
+======================================================================
+('f143262f-dc5c-4eed-8da0-365bf89897b9', ({'order_id': 'f1f7d904-1307-4157-98c1-28e7d6cd3155', 'user_id': 'f143262f-dc5c-4eed-8da0-365bf89897b9', 'date': '2020-01-07 17:49:04.785279+00:00', 'quantity': 1, 'product': 'bread'}, 'kayla51'))
+('f143262f-dc5c-4eed-8da0-365bf89897b9', ({'order_id': 'a175a9c3-d7b1-42a9-a332-a50e6992896e', 'user_id': 'f143262f-dc5c-4eed-8da0-365bf89897b9', 'date': '2020-01-07 18:13:53.160212+00:00', 'quantity': 2, 'product': 'bread'}, 'kayla51'))
+('f143262f-dc5c-4eed-8da0-365bf89897b9', ({'order_id': '5f8a14bd-74bd-4c93-8177-b66137fe032c', 'user_id': 'f143262f-dc5c-4eed-8da0-365bf89897b9', 'date': '2020-01-07 19:03:37.620428+00:00', 'quantity': 5, 'product': 'croissant'}, 'kayla51'))
+join          : 2829
+leftOuterJoin : 2829
+
+======================================================================
+Exercise 1 - aggregateByKey: (order_count, total_quantity) per user
+======================================================================
+f143262f-dc5c-4eed-8da0-365bf89897b9  orders=  4  quantity=  12  avg=3.0
+969b6662-0562-4059-968c-c69b1064005c  orders= 12  quantity=  40  avg=3.33
+ce9e1a11-fcbb-4e59-bbdd-cf7c9c96e9ec  orders= 85  quantity= 253  avg=2.98
+5563f616-00e8-4ece-8b49-452d46d483f3  orders= 21  quantity=  57  avg=2.71
+f94d6204-6808-493f-9fed-2c43e256a6dc  orders= 49  quantity= 175  avg=3.57
+Totals match reduceByKey: OK
+
+======================================================================
+Exercise 2 - fake user_id and leftOuterJoin
+======================================================================
+Orders without a matching user: 1
+[('ffffffff-ffff-ffff-ffff-ffffffffffff', ({'order_id': '00000000-0000-0000-0000-000000000000', 'user_id': 'ffffffff-ffff-ffff-ffff-ffffffffffff', 'date': '2020-01-01 00:00:00+00:00', 'quantity': 1, 'product': 'bread'}, None))]
+
+======================================================================
+Exercise 3 - same aggregation with the DataFrame API
+======================================================================
++------------------------------------+-------------+
+|user_uuid                           |sum(quantity)|
++------------------------------------+-------------+
+|47294739-614f-43d7-99db-3ad0ddd1dfb2|69           |
+|0dde29a6-baa4-471a-9d24-67ac778eedb3|285          |
+|490617f2-747b-4dba-88fe-3ccdc8b8d9c6|43           |
+|ce9e1a11-fcbb-4e59-bbdd-cf7c9c96e9ec|253          |
+|5563f616-00e8-4ece-8b49-452d46d483f3|57           |
++------------------------------------+-------------+
+only showing top 5 rows
+--- DataFrame .explain() ---
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- HashAggregate(keys=[user_uuid#18], functions=[sum(quantity#20)])
+   +- Exchange hashpartitioning(user_uuid#18, 4), ENSURE_REQUIREMENTS, [plan_id=76]
+      +- HashAggregate(keys=[user_uuid#18], functions=[partial_sum(quantity#20)])
+         +- FileScan csv [user_uuid#18,quantity#20] Batched: false, DataFilters: [], Format: CSV, Location: InMemoryFileIndex(1 paths)[file:/home/onyxia/work/orders.csv], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<user_uuid:string,quantity:int>
+
+
+--- RDD .toDebugString() ---
+(2) PythonRDD[31] at collect at /home/onyxia/work/spark_labs/lab06_rdd.py:93 []
+ |  MapPartitionsRDD[24] at mapPartitions at PythonRDD.scala:170 []
+ |  ShuffledRDD[23] at partitionBy at NativeMethodAccessorImpl.java:0 []
+ +-(2) PairwiseRDD[22] at reduceByKey at /home/onyxia/work/spark_labs/lab06_rdd.py:83 []
+    |  PythonRDD[21] at reduceByKey at /home/onyxia/work/spark_labs/lab06_rdd.py:83 []
+    |  PythonRDD[17] at RDD at PythonRDD.scala:58 []
+    |      CachedPartitions: 2; MemorySize: 168.0 KiB; DiskSize: 0.0 B
+    |  orders.csv MapPartitionsRDD[3] at textFile at NativeMethodAccessorImpl.java:0 []
+    |  orders.csv HadoopRDD[2] at textFile at NativeMethodAccessorImpl.java:0 []
+
+======================================================================
+Exercise 4 - effect of .cache()
+======================================================================
+orders_rdd.count()    1st run (with cache)   0.244s  -> 2829
+orders_rdd.count()    2nd run (with cache)   0.119s  -> 2829
+user_quantity.count() (with cache)           0.291s  -> 50
+is_cached: True | storage level: Memory Serialized 1x Replicated
+orders_rdd.count()    1st run (without cache)   0.191s  -> 2829
+orders_rdd.count()    2nd run (without cache)   0.122s  -> 2829
+user_quantity.count() (without cache)        0.280s  -> 50
+is_cached: False | storage level: Serialized 1x Replicated
