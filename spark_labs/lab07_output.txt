@@ -1,0 +1,119 @@
+The jars for the packages stored in: /home/onyxia/.ivy2.5.2/jars
+org.apache.iceberg#iceberg-spark-runtime-4.1_2.13 added as a dependency
+	[SUCCESSFUL ] org.apache.iceberg#iceberg-spark-runtime-4.1_2.13;1.11.0!iceberg-spark-runtime-4.1_2.13.jar (857ms)
+	org.apache.iceberg#iceberg-spark-runtime-4.1_2.13;1.11.0 from central in [default]
+Spark 4.1.1 | Iceberg package: org.apache.iceberg:iceberg-spark-runtime-4.1_2.13:1.11.0
+
+======================================================================
+Bronze layer
+======================================================================
+root
+
+only showing top 3 rows
+only showing top 3 rows
+
+======================================================================
+Silver users - DataFrame API
+======================================================================
+only showing top 5 rows
+
+======================================================================
+Silver orders - DataFrame API with window deduplication
+======================================================================
+Original: 2829
+With duplicates: 2832
+
+After deduplication: 2829
+
+
+======================================================================
+The same transformation with Spark SQL
+======================================================================
+only showing top 5 rows
+DataFrame and SQL versions agree: OK
+--- Catalyst plans: DataFrame vs SQL (same physical operators) ---
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- Project [order_id#570, user_id#571, ordered_at#572, quantity#10, product#574]
+   +- Filter (rn#1778 = 1)
+      +- Window [row_number() windowspecdefinition(order_id#570, ordered_at#572 DESC NULLS LAST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS rn#1778], [order_id#570], [ordered_at#572 DESC NULLS LAST]
+         +- WindowGroupLimit [order_id#570], [ordered_at#572 DESC NULLS LAST], row_number(), 1, Final
+            +- Sort [order_id#570 ASC NULLS FIRST, ordered_at#572 DESC NULLS LAST], false, 0
+               +- Exchange hashpartitioning(order_id#570, 4), ENSURE_REQUIREMENTS, [plan_id=2112]
+                  +- WindowGroupLimit [order_id#570], [ordered_at#572 DESC NULLS LAST], row_number(), 1, Partial
+                     +- Sort [order_id#570 ASC NULLS FIRST, ordered_at#572 DESC NULLS LAST], false, 0
+                        +- Project [uuid#7 AS order_id#570, user_uuid#8 AS user_id#571, date#9 AS ordered_at#572, quantity#10, lower(trim(product#11, None)) AS product#574]
+                           +- InMemoryTableScan [date#9, product#11, quantity#10, user_uuid#8, uuid#7]
+                                 +- InMemoryRelation [uuid#7, user_uuid#8, date#9, quantity#10, product#11], StorageLevel(disk, memory, deserialized, 1 replicas)
+                                       +- FileScan csv [uuid#7,user_uuid#8,date#9,quantity#10,product#11] Batched: false, DataFilters: [], Format: CSV, Location: InMemoryFileIndex(1 paths)[s3a://user-s-vucetic-ece/bronze/orders.csv], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<uuid:string,user_uuid:string,date:timestamp,quantity:int,product:string>
+
+
+only showing top 10 rows
+
+======================================================================
+Write the silver layer as Parquet
+======================================================================
+Parquet read back: 50 users, 2829 orders: OK
+users.parquet part-files: 1
+orders.parquet part-files: 1
+
+======================================================================
+Write the silver layer as Iceberg tables
+======================================================================
+
+
+Iceberg tables read back: OK
+
+======================================================================
+Exercise 1 - birthdate_is_valid (DataFrame API and Spark SQL)
+======================================================================
+
+Rows that differ between DataFrame and SQL: 0
+
+======================================================================
+Exercise 2 - zip_code: regexp_extract vs Python UDF vs pandas_udf
+======================================================================
+regexp_extract      46.6 ms per run
+python udf         114.5 ms per run
+pandas_udf         109.3 ms per run
+All versions return the same zip codes: OK
+
+======================================================================
+Exercise 3 - cache
+======================================================================
+users_bronze cached : True Disk Memory Deserialized 1x Replicated
+orders_bronze cached: True Disk Memory Deserialized 1x Replicated
+Physical plan of stg_orders reads from the cache (InMemoryTableScan):
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- Project [order_id#570, user_id#571, ordered_at#572, quantity#573, product#574]
+   +- Filter (row_number#1251 = 1)
+      +- Window [row_number() windowspecdefinition(order_id#570, ordered_at#572 DESC NULLS LAST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS row_number#1251], [order_id#570], [ordered_at#572 DESC NULLS LAST]
+         +- WindowGroupLimit [order_id#570], [ordered_at#572 DESC NULLS LAST], row_number(), 1, Final
+            +- Sort [order_id#570 ASC NULLS FIRST, ordered_at#572 DESC NULLS LAST], false, 0
+               +- Exchange hashpartitioning(order_id#570, 4), ENSURE_REQUIREMENTS, [plan_id=7866]
+                  +- WindowGroupLimit [order_id#570], [ordered_at#572 DESC NULLS LAST], row_number(), 1, Partial
+                     +- Sort [order_id#570 ASC NULLS FIRST, ordered_at#572 DESC NULLS LAST], false, 0
+                        +- Union
+                           :- Project [uuid#7 AS order_id#570, user_uuid#8 AS user_id#571, date#9 AS ordered_at#572, quantity#10 AS quantity#573, lower(trim(product#11, None)) AS product#574]
+                           :  +- InMemoryTableScan [date#9, product#11, quantity#10, user_uuid#8, uuid#7]
+                           :        +- InMemoryRelation [uuid#7, user_uuid#8, date#9, quantity#10, product#11], StorageLevel(disk, memory, deserialized, 1 replicas)
+                           :              +- FileScan csv [uuid#7,user_uuid#8,date#9,quantity#10,product#11] Batched: false, DataFilters: [], Format: CSV, Location: InMemoryFileIndex(1 paths)[s3a://user-s-vucetic-ece/bronze/orders.csv], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<uuid:string,user_uuid:string,date:timestamp,quantity:int,product:string>
+                           +- GlobalLimit 3, 0
+                              +- Exchange SinglePartition, ENSURE_REQUIREMENTS, [plan_id=7859]
+                                 +- LocalLimit 3
+                                    +- Project [uuid#715 AS order_id#720, user_uuid#716 AS user_id#721, date#717 AS ordered_at#722, quantity#718, lower(trim(product#719, None)) AS product#724]
+                                       +- InMemoryTableScan [date#717, product#719, quantity#718, user_uuid#716, uuid#715]
+                                             +- InMemoryRelation [uuid#715, user_uuid#716, date#717, quantity#718, product#719], StorageLevel(disk, memory, deserialized, 1 replicas)
+                                                   +- FileScan csv [uuid#7,user_uuid#8,date#9,quantity#10,product#11] Batched: false, DataFilters: [], Format: CSV, Location: InMemoryFileIndex(1 paths)[s3a://user-s-vucetic-ece/bronze/orders.csv], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<uuid:string,user_uuid:string,date:timestamp,quantity:int,product:string>
+
+
+
+======================================================================
+Exercise 4 - append + time travel, Iceberg vs Parquet
+======================================================================
+
+Current rows       : 2830
+VERSION AS OF 2253097167504153472: 2829
+Parquet rows after append: 2830
+Parquet VERSION AS OF -> AnalysisException : a Parquet directory has no snapshots

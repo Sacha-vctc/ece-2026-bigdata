@@ -11,3 +11,4 @@ dbt_packages/
 logs/
 *.duckdb
 !lab_medallion/seeds/*.csv
+warehouse/*/*/data/
